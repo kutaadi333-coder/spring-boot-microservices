@@ -1,0 +1,164 @@
+{
+  "info": {
+    "_postman_id": "8f1e6f6e-4d2e-4b98-b1f7-1cebfbc1d7e5",
+    "name": "Task 05 - Resilient Microservices Workflow",
+    "description": "Postman collection for Task 05 covering User Service, Order Service, normal workflow, and failure/resilience test requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1 - User Service",
+      "item": [
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8081/api/v1/users/1",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "1"
+              ]
+            },
+            "description": "Verify that User Service is available and user ID 1 exists."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2 - Order Service - Normal Flow",
+      "item": [
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"productName\": \"Laptop\",\n  \"quantity\": 2,\n  \"amount\": 50000\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8082/api/v1/orders",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "description": "Create an order. Order Service validates the user, saves the order, and publishes ORDER_CREATED to Kafka."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Order by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/api/v1/orders/7",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "7"
+              ]
+            },
+            "description": "Retrieve a created order. Change 7 to the required order ID."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3 - Failure and Resilience Tests",
+      "item": [
+        {
+          "name": "User Service Failure - Create Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"productName\": \"Laptop\",\n  \"quantity\": 2,\n  \"amount\": 50000\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8082/api/v1/orders",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "description": "Failure test: stop User Service before sending. Observe timeout/retry/Circuit Breaker/fallback behavior in Order Service logs."
+          },
+          "response": []
+        },
+        {
+          "name": "Notification Failure - Create Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"productName\": \"Laptop\",\n  \"quantity\": 2,\n  \"amount\": 50000\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8082/api/v1/orders",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "description": "Failure test: stop Notification Service, create the order, then restart Notification Service and verify the Kafka event is consumed after recovery."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
