@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "8f1e6f6e-4d2e-4b98-b1f7-1cebfbc1d7e5",
     "name": "Task 05 - Resilient Microservices Workflow",
-    "description": "Postman collection for Task 05 covering User Service, Order Service, normal workflow, and failure/resilience test requests.",
+    "description": "Existing collection for User Service, Order Service, normal workflow, and failure/resilience requests. Verify scenarios against currently implemented services before running.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -45,11 +45,20 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "TASK01-ORDER-001"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": 1,\n  \"productName\": \"Laptop\",\n  \"quantity\": 2,\n  \"amount\": 50000\n}"
+              "raw": "{\n  \"userId\": 1,\n  \"productId\": 501,\n  \"productName\": \"Laptop\",\n  \"quantity\": 2,\n  \"amount\": 50000.00\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "http://localhost:8082/api/v1/orders",
@@ -64,7 +73,7 @@
                 "orders"
               ]
             },
-            "description": "Create an order. Order Service validates the user, saves the order, and publishes ORDER_CREATED to Kafka."
+            "description": "Create an order. Use a valid userId; productId 501 is an example and may need to match your data."
           },
           "response": []
         },
@@ -87,7 +96,7 @@
                 "7"
               ]
             },
-            "description": "Retrieve a created order. Change 7 to the required order ID."
+            "description": "Replace 7 with an order ID that exists in your local database."
           },
           "response": []
         }
@@ -104,11 +113,20 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "TASK01-USER-FAILURE-001"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": 1,\n  \"productName\": \"Laptop\",\n  \"quantity\": 2,\n  \"amount\": 50000\n}"
+              "raw": "{\n  \"userId\": 1,\n  \"productId\": 501,\n  \"productName\": \"Laptop\",\n  \"quantity\": 2,\n  \"amount\": 50000.00\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "http://localhost:8082/api/v1/orders",
@@ -123,23 +141,32 @@
                 "orders"
               ]
             },
-            "description": "Failure test: stop User Service before sending. Observe timeout/retry/Circuit Breaker/fallback behavior in Order Service logs."
+            "description": "Optional failure test: only run when authorized to stop User Service. Observe actual HTTP result and logs."
           },
           "response": []
         },
         {
-          "name": "Notification Failure - Create Order",
+          "name": "Notification Failure - Create Order (Verify Service Exists First)",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "TASK01-NOTIFICATION-FAILURE-001"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": 1,\n  \"productName\": \"Laptop\",\n  \"quantity\": 2,\n  \"amount\": 50000\n}"
+              "raw": "{\n  \"userId\": 1,\n  \"productId\": 501,\n  \"productName\": \"Laptop\",\n  \"quantity\": 2,\n  \"amount\": 50000.00\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "http://localhost:8082/api/v1/orders",
@@ -154,7 +181,7 @@
                 "orders"
               ]
             },
-            "description": "Failure test: stop Notification Service, create the order, then restart Notification Service and verify the Kafka event is consumed after recovery."
+            "description": "Run only if Notification Service exists in the current implementation. Its existence has not been confirmed; do not stop/test a nonexistent service."
           },
           "response": []
         }

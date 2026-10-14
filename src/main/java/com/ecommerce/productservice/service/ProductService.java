@@ -6,22 +6,38 @@ import com.ecommerce.productservice.dto.ProductResponseDTO;
 import com.ecommerce.productservice.entity.Product;
 import com.ecommerce.productservice.exception.ProductNotFoundException;
 import com.ecommerce.productservice.repository.ProductRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.List;
 
 @Service
 public class ProductService {
 
-    private final ProductRepository productRepository;
+    private static final String CACHE_KEY_PREFIX = "product:";
+    private static final Duration CACHE_TTL =
+            Duration.ofMinutes(10);
 
-    public ProductService(ProductRepository productRepository) {
+    private final ProductRepository productRepository;
+    private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
+
+    public ProductService(
+            ProductRepository productRepository,
+            StringRedisTemplate redisTemplate,
+            ObjectMapper objectMapper
+    ) {
         this.productRepository = productRepository;
+        this.redisTemplate = redisTemplate;
+        this.objectMapper = objectMapper;
     }
 
     // CREATE
@@ -33,7 +49,6 @@ public class ProductService {
         product.setPrice(request.price());
         product.setCategory(request.category());
 
-        // Default values required by the database
         product.setStock(0);
         product.setStatus("AVAILABLE");
 
@@ -99,9 +114,42 @@ public class ProductService {
         );
     }
 
-    // READ - Get product by ID
+    // READ - Get product by ID with Redis cache
     public ProductResponseDTO getProductById(Long id) {
 
+        String cacheKey = CACHE_KEY_PREFIX + id;
+
+        try {
+
+            // Check Redis first
+            String cachedProduct =
+                    redisTemplate.opsForValue().get(cacheKey);
+
+            if (cachedProduct != null) {
+
+                System.out.println(
+                        "CACHE HIT - Product ID: " + id
+                );
+
+                return objectMapper.readValue(
+                        cachedProduct,
+                        ProductResponseDTO.class
+                );
+            }
+
+            System.out.println(
+                    "CACHE MISS - Product ID: " + id
+            );
+
+        } catch (Exception e) {
+
+            System.out.println(
+                    "Redis read failed. Falling back to database. "
+                            + "Product ID: " + id
+            );
+        }
+
+        // Cache miss → Database
         Product product = productRepository.findById(id)
                 .orElseThrow(() ->
                         new ProductNotFoundException(
@@ -109,7 +157,36 @@ public class ProductService {
                         )
                 );
 
-        return convertToResponse(product);
+        ProductResponseDTO response =
+                convertToResponse(product);
+
+        // Store result in Redis
+        try {
+
+            String responseJson =
+                    objectMapper.writeValueAsString(response);
+
+            redisTemplate.opsForValue().set(
+                    cacheKey,
+                    responseJson,
+                    CACHE_TTL
+            );
+
+            System.out.println(
+                    "CACHE STORE - Product ID: " + id
+                            + " | TTL: " + CACHE_TTL
+            );
+
+        } catch (JsonProcessingException e) {
+
+            System.out.println(
+                    "Redis write failed. "
+                            + "Returning database response. "
+                            + "Product ID: " + id
+            );
+        }
+
+        return response;
     }
 
     // UPDATE - Full update
@@ -129,7 +206,11 @@ public class ProductService {
         product.setPrice(request.price());
         product.setCategory(request.category());
 
-        Product updatedProduct = productRepository.save(product);
+        Product updatedProduct =
+                productRepository.save(product);
+
+        // Invalidate cache
+        invalidateProductCache(id);
 
         return convertToResponse(updatedProduct);
     }
@@ -159,7 +240,11 @@ public class ProductService {
             product.setCategory(request.category());
         }
 
-        Product updatedProduct = productRepository.save(product);
+        Product updatedProduct =
+                productRepository.save(product);
+
+        // Invalidate cache
+        invalidateProductCache(id);
 
         return convertToResponse(updatedProduct);
     }
@@ -175,10 +260,39 @@ public class ProductService {
                 );
 
         productRepository.delete(product);
+
+        // Invalidate cache
+        invalidateProductCache(id);
+    }
+
+    // Cache invalidation
+    private void invalidateProductCache(Long id) {
+
+        String cacheKey = CACHE_KEY_PREFIX + id;
+
+        try {
+
+            Boolean deleted =
+                    redisTemplate.delete(cacheKey);
+
+            System.out.println(
+                    "CACHE INVALIDATED - Product ID: " + id
+                            + " | Deleted: " + deleted
+            );
+
+        } catch (Exception e) {
+
+            System.out.println(
+                    "Redis cache invalidation failed "
+                            + "for Product ID: " + id
+            );
+        }
     }
 
     // Convert Entity to Response DTO
-    private ProductResponseDTO convertToResponse(Product product) {
+    private ProductResponseDTO convertToResponse(
+            Product product
+    ) {
 
         return new ProductResponseDTO(
                 product.getId(),
