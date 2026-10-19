@@ -135,3 +135,27 @@ Still requiring verification:
 - Apache Kafka
 - Postman
 - Git
+
+## Day 1 — Service Boundaries and Contract Design
+
+Architecture and API contract documentation:
+
+- [Service Boundaries and API Contracts](docs/DAY-1-SERVICE-BOUNDARIES-AND-CONTRACTS.md)
+
+### API Documentation
+
+- OpenAPI JSON: `http://localhost:8085/v3/api-docs`
+- Swagger UI: `http://localhost:8085/swagger-ui/index.html`
+
+### Verification
+
+- Product Service compilation: `BUILD SUCCESS`
+- Public product endpoint: `GET /api/v1/products/public` — HTTP 200
+- Unauthenticated product creation request: `POST /api/v1/products` — HTTP 401
+
+### Key Decisions
+
+- Use versioned API paths for API evolution.
+- Apply request validation to product creation and full updates.
+- Preserve JWT authentication and role-based authorization.
+- Document service boundaries, trust boundaries, and known verification limitations in the Day 1 contract document.
